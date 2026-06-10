@@ -1,318 +1,280 @@
-"""Generate 10 themed character avatars for the Hearts roster via Grok Imagine.
+"""Generate 10 realistic human portrait avatars for the Hearts roster via Grok Imagine.
 
 Output: assets/avatars/avatar_<01..10>.png  (128x128 RGBA)
         assets/avatars/_manifest.json  (id, prompt, file, sha256)
 
-Idempotent: skips generation if a matching file already exists (by sha of prompt).
-Re-running the script picks up any new characters.
-
 Usage:
-    PYTHONPATH=src python3 scripts/generate_avatars.py
-    PYTHONPATH=src python3 scripts/generate_avatars.py --force  # regenerate all
+    python scripts/generate_avatars.py           # generate missing
+    python scripts/generate_avatars.py --force   # regenerate all
+    python scripts/generate_avatars.py --dry-run  # validate prompts only
 """
 
 from __future__ import annotations
 
-import argparse
 import base64
 import hashlib
 import json
 import os
 import sys
 import time
-import urllib.error
-import urllib.request
 from pathlib import Path
-from typing import Dict, List
 
+import requests
 from PIL import Image
 
-# xAI config (reads from svens's profile .env, like the rest of the lab)
-ENV_PATH = Path("/home/jd/.hermes/profiles/sven/.env")
-if ENV_PATH.is_file():
-    for line in ENV_PATH.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        os.environ.setdefault(k.strip(), v.strip())
+# ---------------------------------------------------------------------------
+# Project roots
+# ---------------------------------------------------------------------------
 
-XAI_API_KEY = os.environ.get("XAI_API_KEY", "")
-if not XAI_API_KEY:
-    print("ERROR: XAI_API_KEY not set", file=sys.stderr)
-    sys.exit(1)
+ROOT = Path(__file__).resolve().parents[1]
+AVATAR_DIR = ROOT / "assets" / "avatars"
+MANIFEST_PATH = AVATAR_DIR / "_manifest.json"
 
-API_URL = "https://api.x.ai/v1/images/generations"
-MODEL = "grok-imagine-image-quality"
-AVATAR_SIZE = 128  # final size in px (square)
+# ---------------------------------------------------------------------------
+# Character definitions (must match src/hearts/roster.py)
+# ---------------------------------------------------------------------------
 
-# 10 characters. id, name, personality, theme, prompt.
-CHARACTERS: List[Dict[str, str]] = [
+CHARACTERS = [
     {
-        "id": "vamp_countess",
-        "name": "Countess Mara",
+        "id": "marco",
+        "name": "Marco",
         "personality": "aggressive",
+        "avatar_file": "avatar_01.png",
         "prompt": (
-            "portrait of a vampire countess, head and shoulders, "
-            "dark red and black formal high-collared cape, pale skin, "
-            "sharp elegant features, dark hair in a vintage updo with a red rose, "
-            "deep crimson lips, hint of fangs, "
-            "solid deep purple background with subtle vignette, no text no logos, "
-            "painterly digital art style, dramatic cinematic lighting"
+            "Photorealistic portrait photo of an Italian man in his early 30s, "
+            "short dark hair, clean-shaven, intense confident expression, "
+            "wearing a navy collared shirt, plain light grey background, "
+            "head and shoulders framing, soft studio lighting, no text"
         ),
     },
     {
-        "id": "mad_hatter",
-        "name": "Thaddeus Brass",
+        "id": "priya",
+        "name": "Priya",
         "personality": "balanced",
+        "avatar_file": "avatar_02.png",
         "prompt": (
-            "portrait of a steampunk inventor, head and shoulders, "
-            "brass goggles pushed up on forehead, top hat with small gears, "
-            "leather apron over waistcoat, copper pocket watch chain, "
-            "muted sepia and brass color palette, "
-            "solid warm brown background, no text no logos, "
-            "painterly digital art style"
+            "Photorealistic portrait photo of a South Asian woman in her late 20s, "
+            "long dark hair, calm thoughtful expression, "
+            "wearing a white blouse, plain light grey background, "
+            "head and shoulders framing, soft studio lighting, no text"
         ),
     },
     {
-        "id": "jazz_singer",
-        "name": "Lina Holloway",
+        "id": "tomoko",
+        "name": "Tomoko",
         "personality": "conservative",
+        "avatar_file": "avatar_03.png",
         "prompt": (
-            "portrait of a 1920s jazz singer, head and shoulders, "
-            "feather headband, pearl necklace, satin dress strap visible, "
-            "soft golden sepia lighting, contemplative expression, "
-            "solid smoky gold background, no text no logos, "
-            "painterly digital art style, art deco poster feel"
+            "Photorealistic portrait photo of a Japanese woman in her early 60s, "
+            "short neat grey hair, gentle reserved expression, "
+            "wearing a cream cardigan over a light top, plain light grey background, "
+            "head and shoulders framing, soft studio lighting, no text"
         ),
     },
     {
-        "id": "hacker",
-        "name": "Zero",
+        "id": "jesus",
+        "name": "Jesús",
         "personality": "aggressive",
+        "avatar_file": "avatar_04.png",
         "prompt": (
-            "portrait of a cyberpunk hacker, head and shoulders, "
-            "hooded jacket, LED strip reflecting cyan light on face, "
-            "terminal-green eyeshadow smudge, undercut hair, "
-            "subtle data-mesh reflection in pupils, "
-            "solid near-black background with a single cyan rim light, "
-            "no text no logos, painterly digital art style"
+            "Photorealistic portrait photo of a Spanish man in his mid 20s, "
+            "short dark curly hair, sharp competitive grin, "
+            "wearing a dark henley shirt, plain light grey background, "
+            "head and shoulders framing, soft studio lighting, no text"
         ),
     },
     {
-        "id": "samurai",
-        "name": "Reza Hayashi",
+        "id": "anna",
+        "name": "Anna",
         "personality": "balanced",
+        "avatar_file": "avatar_05.png",
         "prompt": (
-            "portrait of a female samurai, head and shoulders, "
-            "white and crimson kimono, hair tied high with a kanzashi pin, "
-            "calm focused expression, single cherry blossom petal falling, "
-            "solid soft white background with a faint red accent, no text no logos, "
-            "painterly digital art style, sumi-e inspired"
+            "Photorealistic portrait photo of a Scandinavian woman in her early 30s, "
+            "blonde hair in a practical bun, composed steady expression, "
+            "wearing a light blue scrubs top, plain light grey background, "
+            "head and shoulders framing, soft studio lighting, no text"
         ),
     },
     {
-        "id": "disco_queen",
-        "name": "Vee Stardust",
+        "id": "kwame",
+        "name": "Kwame",
         "personality": "aggressive",
+        "avatar_file": "avatar_06.png",
         "prompt": (
-            "portrait of a 1970s disco queen, head and shoulders, "
-            "big halo hair, sequined headband, shimmery eyeshadow, "
-            "huge sparkling smile, mirror-ball light reflections on skin, "
-            "solid deep purple background with a few sparkle bokeh dots, "
-            "no text no logos, painterly digital art style, glamorous"
+            "Photorealistic portrait photo of a Ghanaian man in his mid 40s, "
+            "close-cropped hair, warm but determined expression, "
+            "wearing a checkered button-down shirt, plain light grey background, "
+            "head and shoulders framing, soft studio lighting, no text"
         ),
     },
     {
-        "id": "mystic",
-        "name": "Wren of the Hollow",
+        "id": "sarah",
+        "name": "Sarah",
         "personality": "conservative",
+        "avatar_file": "avatar_07.png",
         "prompt": (
-            "portrait of a forest mystic, head and shoulders, "
-            "moss-green hooded cloak, white face paint with subtle rune marks, "
-            "soft glowing candle in foreground out of focus, "
-            "deep emerald and gold color palette, "
-            "solid dark forest-green background, no text no logos, "
-            "painterly digital art style, ethereal"
+            "Photorealistic portrait photo of an Irish woman in her early 50s, "
+            "shoulder-length brown hair with reading glasses, quiet observant expression, "
+            "wearing a green cardigan, plain light grey background, "
+            "head and shoulders framing, soft studio lighting, no text"
         ),
     },
     {
-        "id": "pirate",
-        "name": "Captain Saul",
+        "id": "dmitri",
+        "name": "Dmitri",
         "personality": "aggressive",
+        "avatar_file": "avatar_08.png",
         "prompt": (
-            "portrait of a weathered pirate captain, head and shoulders, "
-            "tricorn hat with a tarnished brass buckle, salt-and-pepper beard, "
-            "leather coat collar turned up, gold hoop earring, "
-            "scar across one cheek, squinty confident eye, "
-            "solid muted ocean-blue background, no text no logos, "
-            "painterly digital art style, oceanic lighting"
+            "Photorealistic portrait photo of a Russian man in his late 30s, "
+            "short fair hair, icy focused expression, "
+            "wearing a black turtleneck, plain light grey background, "
+            "head and shoulders framing, soft studio lighting, no text"
         ),
     },
     {
-        "id": "mad_scientist",
-        "name": "Dr. Indy Vex",
+        "id": "lin",
+        "name": "Lin",
         "personality": "balanced",
+        "avatar_file": "avatar_09.png",
         "prompt": (
-            "portrait of a mad scientist, head and shoulders, "
-            "white lab coat with a scorch mark, wild Einstein hair, "
-            "oversized brass goggles, a faint green glow from a vial near collar, "
-            "mischievous grin, "
-            "solid dark teal background with a green rim light, no text no logos, "
-            "painterly digital art style"
+            "Photorealistic portrait photo of a Chinese woman in her early 20s, "
+            "straight black hair, analytical alert expression, "
+            "wearing a casual dark hoodie, plain light grey background, "
+            "head and shoulders framing, soft studio lighting, no text"
         ),
     },
     {
-        "id": "grandmaster",
-        "name": "Aurelia Voss",
+        "id": "ben",
+        "name": "Ben",
         "personality": "conservative",
+        "avatar_file": "avatar_10.png",
         "prompt": (
-            "portrait of a chess grandmaster, head and shoulders, "
-            "sharp charcoal turtleneck, hair pulled back tight, "
-            "calculating grey eyes, faint chess-piece shadow on cheek, "
-            "high-contrast monochrome with one red accent pin on collar, "
-            "solid mid-grey background, no text no logos, "
-            "painterly digital art style, minimal"
+            "Photorealistic portrait photo of a New Zealand man in his late 60s, "
+            "white receding hair, mild patient expression, "
+            "wearing a worn brown cardigan over a light shirt, plain light grey background, "
+            "head and shoulders framing, soft studio lighting, no text"
         ),
     },
 ]
 
+# ---------------------------------------------------------------------------
+# Personality distribution check
+# ---------------------------------------------------------------------------
 
-def call_grok(prompt: str, retries: int = 3) -> bytes:
-    """Hit xAI /v1/images/generations and return raw PNG bytes."""
-    body = json.dumps({
-        "model": MODEL,
+def _validate_distribution(chars: list[dict]) -> None:
+    from collections import Counter
+    counts = Counter(c["personality"] for c in chars)
+    assert counts["aggressive"] >= 3, f"need >= 3 aggressive, got {counts['aggressive']}"
+    assert counts["balanced"] >= 3, f"need >= 3 balanced, got {counts['balanced']}"
+    assert counts["conservative"] >= 3, f"need >= 3 conservative, got {counts['conservative']}"
+    print(f"  OK: {counts['aggressive']} aggressive, {counts['balanced']} balanced, {counts['conservative']} conservative")
+
+# ---------------------------------------------------------------------------
+# Grok Imagine API
+# ---------------------------------------------------------------------------
+
+def _api_key() -> str:
+    # Try sven profile env, then real home, then env.
+    for env_path in [
+        Path.home() / ".env",
+        Path("/home/jd/.hermes/profiles/sven/.env"),
+        Path("/home/jd/.hermes/.env"),
+    ]:
+        if env_path.is_file():
+            for line in env_path.read_text().splitlines():
+                if line.startswith("XAI_API_KEY="):
+                    return line.split("=", 1)[1].strip()
+    key = os.environ.get("XAI_API_KEY", "")
+    if key:
+        return key
+    raise RuntimeError("XAI_API_KEY not found in .env or environment")
+
+
+def _generate_image(prompt: str, out_path: Path) -> None:
+    """Call xAI Grok Imagine and save the 128x128 RGBA result."""
+    import base64
+    import io
+    api_key = _api_key()
+    url = "https://api.x.ai/v1/images/generations"
+    payload = {
+        "model": "grok-imagine-image-quality",
         "prompt": prompt,
         "n": 1,
         "response_format": "b64_json",
-        "aspect_ratio": "1:1",
-        "resolution": "2k",
-    }).encode()
-    req = urllib.request.Request(
-        API_URL,
-        data=body,
-        headers={
-            "Authorization": f"Bearer {XAI_API_KEY}",
-            "Content-Type": "application/json",
-        },
-    )
-    last_err = None
-    for attempt in range(retries):
-        try:
-            with urllib.request.urlopen(req, timeout=180) as r:
-                resp = json.loads(r.read())
-            entry = resp["data"][0]
-            b64 = entry.get("b64_json") or entry.get("b64")
-            if not b64:
-                raise RuntimeError(f"no b64 in response: {list(entry.keys())}")
-            return base64.b64decode(b64)
-        except (urllib.error.HTTPError, urllib.error.URLError, KeyError) as e:
-            last_err = e
-            wait = 2 ** attempt
-            print(f"  retry {attempt + 1}/{retries} after {wait}s: {e}", file=sys.stderr)
-            time.sleep(wait)
-    raise RuntimeError(f"grok api failed after {retries} tries: {last_err}")
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    resp = requests.post(url, json=payload, headers=headers, timeout=120)
+    resp.raise_for_status()
+    data = resp.json()
+    b64 = data["data"][0]["b64_json"]
 
+    raw = Image.open(io.BytesIO(base64.b64decode(b64))).convert("RGBA")
 
-def post_process(raw_png: bytes, out_path: Path) -> str:
-    """Resize to AVATAR_SIZE x AVATAR_SIZE, ensure RGBA, write to disk.
+    # Resize to 128x128 for game use.
+    out = raw.resize((128, 128), Image.LANCZOS)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out.save(str(out_path), format="PNG")
 
-    Returns sha256 hex of the final file.
-    """
-    import io
-    im = Image.open(io.BytesIO(raw_png)).convert("RGBA")
-    im = im.resize((AVATAR_SIZE, AVATAR_SIZE), Image.LANCZOS)
-    im.save(out_path, "PNG", optimize=True)
-    digest = hashlib.sha256(out_path.read_bytes()).hexdigest()
-    return digest
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
+def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate avatar portraits via Grok Imagine")
+    parser.add_argument("--force", action="store_true", help="Regenerate all avatars")
+    parser.add_argument("--dry-run", action="store_true", help="Validate prompts only, no API calls")
+    args = parser.parse_args()
 
-def main() -> int:
-    p = argparse.ArgumentParser()
-    p.add_argument("--force", action="store_true",
-                   help="regenerate even if file with matching sha exists")
-    p.add_argument("--out", type=Path, default=Path("assets/avatars"),
-                   help="output directory (default: assets/avatars)")
-    p.add_argument("--dry-run", action="store_true",
-                   help="print what would happen without calling the API")
-    args = p.parse_args()
+    print("Avatar generation — realistic human portraits")
+    print(f"  Characters: {len(CHARACTERS)}")
+    _validate_distribution(CHARACTERS)
 
-    out_dir: Path = args.out
-    out_dir.mkdir(parents=True, exist_ok=True)
+    AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    manifest: list[dict] = []
 
-    if len(CHARACTERS) != 10:
-        print(f"ERROR: expected 10 characters, got {len(CHARACTERS)}", file=sys.stderr)
-        return 1
-
-    # Personality sanity: 4 aggressive, 3 balanced, 3 conservative
-    counts: Dict[str, int] = {"aggressive": 0, "balanced": 0, "conservative": 0}
-    for c in CHARACTERS:
-        counts[c["personality"]] += 1
-    if counts != {"aggressive": 4, "balanced": 3, "conservative": 3}:
-        print(f"ERROR: personality distribution must be 4-3-3, got {counts}",
-              file=sys.stderr)
-        return 1
-
-    manifest_path = out_dir / "_manifest.json"
-    manifest: List[Dict[str, str]] = []
-
-    for idx, c in enumerate(CHARACTERS, start=1):
-        avatar_name = f"avatar_{idx:02d}.png"
-        out_path = out_dir / avatar_name
-        prompt_hash = hashlib.sha256(c["prompt"].encode()).hexdigest()[:16]
-        print(f"[{idx:02d}/10] {c['id']:<14} ({c['personality']:<12}) → {avatar_name}",
-              file=sys.stderr)
-
-        # Skip if matching file already on disk
-        if out_path.exists() and not args.force:
-            try:
-                im = Image.open(out_path)
-                if im.size == (AVATAR_SIZE, AVATAR_SIZE):
-                    existing_sha = hashlib.sha256(out_path.read_bytes()).hexdigest()[:16]
-                    print(f"  exists, sha={existing_sha} — skip", file=sys.stderr)
-                    manifest.append({
-                        "id": c["id"],
-                        "name": c["name"],
-                        "personality": c["personality"],
-                        "file": avatar_name,
-                        "prompt": c["prompt"],
-                        "prompt_hash": prompt_hash,
-                        "sha256": existing_sha,
-                    })
-                    continue
-            except Exception:
-                pass  # corrupt or wrong size — regenerate
+    for i, char in enumerate(CHARACTERS, 1):
+        out_path = AVATAR_DIR / char["avatar_file"]
+        prompt = char["prompt"]
+        print(f"  [{i:02d}/10] {char['name']:<10} personality={char['personality']:<12} file={char['avatar_file']}")
 
         if args.dry_run:
-            print(f"  [dry-run] would call grok and write {out_path}", file=sys.stderr)
+            print(f"           prompt: {prompt[:80]}...")
+            manifest.append({"id": char["id"], "name": char["name"], "prompt": prompt,
+                             "file": char["avatar_file"], "sha256": "<dry-run>"})
             continue
 
-        raw = call_grok(c["prompt"])
-        sha = post_process(raw, out_path)
-        print(f"  wrote {out_path} ({out_path.stat().st_size} bytes, sha={sha[:16]})",
-              file=sys.stderr)
-        manifest.append({
-            "id": c["id"],
-            "name": c["name"],
-            "personality": c["personality"],
-            "file": avatar_name,
-            "prompt": c["prompt"],
-            "prompt_hash": prompt_hash,
-            "sha256": sha,
-        })
-        time.sleep(0.5)  # gentle rate limit
+        if out_path.exists() and not args.force:
+            # Verify it's a real image (not a placeholder).
+            try:
+                im = Image.open(str(out_path))
+                if im.size == (128, 128) and out_path.stat().st_size > 5000:
+                    print(f"           ✓ exists and valid ({out_path.stat().st_size:,} bytes), skipping")
+                    sha = hashlib.sha256(out_path.read_bytes()).hexdigest()[:16]
+                    manifest.append({"id": char["id"], "name": char["name"], "prompt": prompt,
+                                     "file": char["avatar_file"], "sha256": sha})
+                    continue
+            except Exception:
+                pass  # Fall through to regenerate.
+
+        print(f"           generating...")
+        _generate_image(prompt, out_path)
+        sha = hashlib.sha256(out_path.read_bytes()).hexdigest()[:16]
+        size = out_path.stat().st_size
+        print(f"           ✓ saved {size:,} bytes  sha256={sha}")
+        manifest.append({"id": char["id"], "name": char["name"], "prompt": prompt,
+                         "file": char["avatar_file"], "sha256": sha})
+        time.sleep(1)  # Gentle rate-limit.
 
     if not args.dry_run:
-        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-        print(f"\nwrote {manifest_path}", file=sys.stderr)
-
-    # Summary
-    print("\n=== Roster summary ===", file=sys.stderr)
-    for m in manifest:
-        print(f"  {m['file']:<18} {m['name']:<22} {m['personality']:<12} {m['id']}",
-              file=sys.stderr)
-    return 0
+        MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n")
+        print(f"\n  Manifest written to {MANIFEST_PATH}")
+    else:
+        print(f"\n  Dry run — {len(manifest)} prompts validated.")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

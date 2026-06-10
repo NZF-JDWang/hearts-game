@@ -165,8 +165,8 @@ def test_draw_ai_three_returns_three():
 # ---------------------------------------------------------------------------
 
 def test_find_by_id_found():
-    c = find_by_id("vamp_countess")
-    assert c.name == "Countess Mara"
+    c = find_by_id("marco")
+    assert c.name == "Marco"
 
 
 def test_find_by_id_missing_raises():

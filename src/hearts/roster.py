@@ -31,7 +31,6 @@ from typing import List, Optional, Tuple
 
 PERSONALITIES: Tuple[str, ...] = ("aggressive", "balanced", "conservative")
 
-
 @dataclass(frozen=True)
 class Character:
     """One named AI opponent with a permanent visual + flavor."""
@@ -65,113 +64,113 @@ class Character:
 
 ROSTER: Tuple[Character, ...] = (
     Character(
-        id="vamp_countess",
-        name="Countess Mara",
+        id="marco",
+        name="Marco",
         personality="aggressive",
         avatar_file="avatar_01.png",
-        tagline="Take what you want.",
+        tagline="I play to win.",
         bio=(
-            "An immortal aristocrat from a fallen house. She treats Hearts "
-            "like a court intrigue — every Q♠ is a hostage."
+            "Competitive card player from Milan. Never passes up a chance "
+            "to take the lead and force the table to react."
         ),
     ),
     Character(
-        id="mad_hatter",
-        name="Thaddeus Brass",
+        id="priya",
+        name="Priya",
         personality="balanced",
         avatar_file="avatar_02.png",
-        tagline="Calibrate, then commit.",
+        tagline="Read the table, then decide.",
         bio=(
-            "Steampunk inventor who runs every hand through a small brass "
-            "differential engine. Never over-extends, never under-estimates."
+            "Data analyst from Toronto who approaches every hand like a "
+            "puzzle. Adapts strategy based on what others have shown."
         ),
     ),
     Character(
-        id="jazz_singer",
-        name="Lina Holloway",
+        id="tomoko",
+        name="Tomoko",
         personality="conservative",
         avatar_file="avatar_03.png",
-        tagline="A whisper wins a room.",
+        tagline="Patience pays off.",
         bio=(
-            "A 1920s cabaret singer who learned patience between sets. "
-            "Holds the line, lets the others over-play, picks up the mess."
+            "Retired accountant from Osaka. Keeps a mental ledger of every "
+            "card played and rarely takes unnecessary risks."
         ),
     ),
     Character(
-        id="hacker",
-        name="Zero",
+        id="jesus",
+        name="Jesús",
         personality="aggressive",
         avatar_file="avatar_04.png",
-        tagline="Already inside the trick.",
+        tagline="No mercy at the table.",
         bio=(
-            "Grey-hat pentester who treats Hearts as a stack to be popped. "
-            "Will burn a hand to read yours."
+            "Amateur poker champion from Seville who brings the same "
+            "relentless energy to Hearts. Leads hard, folds never."
         ),
     ),
     Character(
-        id="samurai",
-        name="Reza Hayashi",
+        id="anna",
+        name="Anna",
         personality="balanced",
         avatar_file="avatar_05.png",
-        tagline="One cut, no more.",
+        tagline="Steady and sharp.",
         bio=(
-            "A ronin of the cherry-blossom school. Waits for the moment the "
-            "trick is hers, then takes it cleanly."
+            "Medical resident from Stockholm. Long shifts taught her to "
+            "stay calm under pressure and pick her moments carefully."
         ),
     ),
     Character(
-        id="disco_queen",
-        name="Vee Stardust",
+        id="kwame",
+        name="Kwame",
         personality="aggressive",
         avatar_file="avatar_06.png",
-        tagline="Every hand is a comeback.",
+        tagline="Control the game early.",
         bio=(
-            "Mirror-ball survivor of the disco wars. Sling-shot heart cards "
-            "across the table like sequins. Pure spectacle."
+            "High school maths teacher from Accra. Treats every hand as "
+            "a probability problem — and plays to tilt the odds."
         ),
     ),
     Character(
-        id="mystic",
-        name="Wren of the Hollow",
+        id="sarah",
+        name="Sarah",
         personality="conservative",
         avatar_file="avatar_07.png",
-        tagline="The forest is patient.",
+        tagline="Let them make mistakes.",
         bio=(
-            "A hedge-witch who keeps a candle-lit ledger of every card she "
-            "has ever seen played. Slow, careful, and you never notice her."
+            "Librarian from Dublin who learned Hearts at family gatherings. "
+            "Quiet, observant, and content to let others overextend."
         ),
     ),
     Character(
-        id="pirate",
-        name="Captain Saul",
+        id="dmitri",
+        name="Dmitri",
         personality="aggressive",
         avatar_file="avatar_08.png",
-        tagline="Booty first, heart last.",
+        tagline="Push until they fold.",
         bio=(
-            "Privateer turned cardsharp. Reads the wind (and the lead suit) "
-            "and goes straight for the chest."
+            "Former chess hustler from Saint Petersburg who switched to "
+            "Hearts for faster games. Plays with cold, calculated pressure."
         ),
     ),
     Character(
-        id="mad_scientist",
-        name="Dr. Indy Vex",
+        id="lin",
+        name="Lin",
         personality="balanced",
         avatar_file="avatar_09.png",
-        tagline="Hypothesis: you can't.",
+        tagline="Adapt or lose.",
         bio=(
-            "Abolished from three academies for unethical shuffling. Plays a "
-            "near-optimal game, occasionally stops to take notes on you."
+            "Engineering student from Shanghai who treats every round as "
+            "an optimisation problem. Switches gears mid-hand as needed."
         ),
     ),
     Character(
-        id="grandmaster",
-        name="Aurelia Voss",
+        id="ben",
+        name="Ben",
         personality="conservative",
         avatar_file="avatar_10.png",
-        tagline="The board remembers.",
+        tagline="Slow and steady.",
         bio=(
-            "Three-time under-21 world finalist. Treats Hearts as a "
-            "long-game and only deviates from the book with cause."
+            "Retired postal worker from Christchurch. Learned Hearts in "
+            "the break room — plays tight, trims losses, waits for openings."
         ),
     ),
 )
@@ -183,7 +182,6 @@ ROSTER: Tuple[Character, ...] = (
 
 def _by_personality(personality: str) -> List[Character]:
     return [c for c in ROSTER if c.personality == personality]
-
 
 def pick_ai_three(seed: Optional[int] = None) -> List[Character]:
     """Return 3 distinct characters with at least one of each personality.
@@ -238,7 +236,6 @@ def find_by_id(char_id: str) -> Character:
         if c.id == char_id:
             return c
     raise KeyError(f"no character with id={char_id!r}")
-
 
 def avatar_path(char: Character, assets_root: Path) -> Path:
     """Resolve a character's avatar_file against the avatars directory."""
