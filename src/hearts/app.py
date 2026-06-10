@@ -33,11 +33,13 @@ from typing import Dict, List, Optional, Tuple
 import pygame
 
 # Make src/ importable when run from project root.
-ROOT = Path(__file__).resolve().parents[1]
+# ROOT is the project root, so assets/ resolves correctly regardless of cwd.
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from hearts import engine as eng  # noqa: E402
 from hearts import ai  # noqa: E402
+from hearts import roster as roster_mod  # noqa: E402
 from hearts.cards import Card, Hand, Rank, Suit  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -70,15 +72,6 @@ PERSONALITY_COLOR = {
     "balanced":    (220, 180, 60),
     "conservative": (70, 140, 220),
 }
-
-# Avatar / name pool.
-AVATAR_FILES = [
-    "avatar_01.png", "avatar_02.png", "avatar_03.png",
-    "avatar_04.png", "avatar_05.png", "avatar_06.png",
-]
-NAMES = [
-    "Mara", "Saul", "Indy", "Vee", "Reza", "Lina",
-]
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +118,14 @@ class Assets:
         return self.backs.get(name)
 
     def get_avatar(self, name: str) -> Optional[pygame.Surface]:
-        return self.avatars.get(name)
+        # Lookups may include the .png suffix (older call sites) or not;
+        # both should resolve to the same stem.
+        if not name:
+            return None
+        if name in self.avatars:
+            return self.avatars[name]
+        stem = name.removesuffix(".png")
+        return self.avatars.get(stem)
 
     @staticmethod
     def _face_key(card: Card) -> str:
@@ -236,6 +236,11 @@ class Player:
     name: str
     personality: str
     avatar: str
+    # Optional character flavour — present for AI (set from roster), None for
+    # the human seat. UI uses these for the roster panel.
+    tagline: Optional[str] = None
+    bio: Optional[str] = None
+    char_id: Optional[str] = None  # stable id for rematch / stats tracking
     tricks_won: int = 0
     round_points: int = 0
     total_points: int = 0
@@ -250,8 +255,10 @@ class App:
                               "dummy" if headless else "")
         pygame.init()
         pygame.display.set_caption("BlaksiteLab Hearts")
-        self.screen = pygame.display.set_mode(
-            (SCREEN_W, SCREEN_H)) if not headless else None
+        # We always set a real display surface so that
+        # .convert()/.convert_alpha() can run during asset loading. In
+        # headless mode the dummy driver makes this essentially free.
+        self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
         self.clock = pygame.time.Clock()
         self.font_xl = pygame.font.SysFont("Arial", 48, bold=True)
         self.font_lg = pygame.font.SysFont("Arial", 28, bold=True)
@@ -517,19 +524,28 @@ class App:
                                                for p in self.players]
 
     def _start_new_game(self, rematch: bool = False) -> None:
-        # On a rematch, keep the same players and personalities.
+        # On a rematch, keep the same players and personalities. On a fresh
+        # start, pick 3 random characters from the roster and seat them at
+        # indices 1..3 (index 0 is the human).
         if not rematch:
-            # Randomise personalities (human first, then AI).
-            pool = list(PERSONALITIES) * 2
-            random.shuffle(pool)
+            picks = roster_mod.draw_ai_three()
             self.players = []
-            for i in range(4):
-                p = Player(
-                    name=NAMES[i],
-                    personality=pool[i] if i > 0 else "balanced",
-                    avatar=AVATAR_FILES[i % len(AVATAR_FILES)],
-                )
-                self.players.append(p)
+            # Human seat first.
+            self.players.append(Player(
+                name="You",
+                personality="balanced",
+                avatar="",  # human has no avatar
+                char_id="human",
+            ))
+            for c in picks:
+                self.players.append(Player(
+                    name=c.name,
+                    personality=c.personality,
+                    avatar=c.avatar_file,
+                    tagline=c.tagline,
+                    bio=c.bio,
+                    char_id=c.id,
+                ))
         # Always reset per-game scores and tricks.
         for p in self.players:
             p.tricks_won = 0
@@ -1037,13 +1053,17 @@ class App:
                   self.font_sm, color=(180, 180, 180))
 
     def _draw_player_roster(self) -> None:
-        """Draw the left sidebar with player avatars + scores + tricks won."""
+        """Draw the left sidebar with player avatars + scores + tricks won.
+
+        Each row shows: avatar, name, personality chip, tagline (or
+        personality desc for the human seat), score, and tricks won.
+        """
         if self.state is None:
             return
         x0 = 20
         y0 = 80
         w = 220
-        h = 130
+        h = 140
         for i, p in enumerate(self.players):
             r = pygame.Rect(x0, y0 + i * (h + 10), w, h)
             bg_color = (40, 50, 70) if i == self.state.current_player_idx else (
@@ -1053,28 +1073,38 @@ class App:
                                                  (200, 200, 200))
             pygame.draw.rect(self.screen, border_color, r, width=2,
                              border_radius=10)
-            # Avatar.
-            av = ASSETS_BUNDLE.get_avatar(p.avatar)
+            # Avatar (skip for the human seat, which has no avatar).
+            av = ASSETS_BUNDLE.get_avatar(p.avatar) if p.avatar else None
             if av is not None:
                 av_scaled = pygame.transform.smoothscale(av, (80, 80))
                 self.screen.blit(av_scaled, (r.left + 10, r.top + 25))
-            # Name + personality.
-            draw_text(self.screen, p.name, (r.left + 100, r.top + 20),
+            else:
+                # Fall back to a circular initial for the human seat.
+                initial = (p.name[:1] or "Y").upper()
+                font_init = pygame.font.SysFont("Arial", 48, bold=True)
+                draw_text(self.screen, initial,
+                          (r.left + 50, r.top + 65), font_init,
+                          color=border_color, center=True)
+            # Name (top right).
+            draw_text(self.screen, p.name, (r.left + 100, r.top + 12),
                       self.font_lg, color=(255, 255, 255))
+            # Personality chip (just below name).
             draw_text(self.screen, p.personality,
-                      (r.left + 100, r.top + 48),
+                      (r.left + 100, r.top + 38),
                       self.font_sm, color=border_color)
-            # Score / tricks.
+            # Tagline for AI, personality desc for human.
+            flavor = p.tagline or PERSONALITY_DESC.get(p.personality, "")
+            if flavor:
+                draw_text(self.screen, f"\u201C{flavor}\u201D",
+                          (r.left + 100, r.top + 56),
+                          self.font_sm, color=(200, 200, 200))
+            # Score / tricks (bottom right).
             draw_text(self.screen, f"Score: {p.total_points}",
-                      (r.left + 100, r.top + 70),
+                      (r.left + 100, r.top + 86),
                       self.font_sm, color=(220, 220, 220))
             draw_text(self.screen, f"Tricks: {p.tricks_won}",
-                      (r.left + 100, r.top + 90),
+                      (r.left + 100, r.top + 106),
                       self.font_sm, color=(220, 220, 220))
-            # Personality description.
-            desc = PERSONALITY_DESC.get(p.personality, "")
-            draw_text(self.screen, desc, (r.left + 100, r.top + 108),
-                      self.font_sm, color=(170, 170, 170))
 
     def _hand_card_rects(self) -> List[Tuple[Card, pygame.Rect]]:
         if self.state is None:

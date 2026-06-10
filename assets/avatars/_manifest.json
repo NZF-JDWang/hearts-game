@@ -1,0 +1,92 @@
+[
+  {
+    "id": "vamp_countess",
+    "name": "Countess Mara",
+    "personality": "aggressive",
+    "file": "avatar_01.png",
+    "prompt": "portrait of a vampire countess, head and shoulders, dark red and black formal high-collared cape, pale skin, sharp elegant features, dark hair in a vintage updo with a red rose, deep crimson lips, hint of fangs, solid deep purple background with subtle vignette, no text no logos, painterly digital art style, dramatic cinematic lighting",
+    "prompt_hash": "e821eaa460f4d343",
+    "sha256": "d6d8b3b4f1491c41444993d927587259330d14b11ec148ab92fb13a308198f55"
+  },
+  {
+    "id": "mad_hatter",
+    "name": "Thaddeus Brass",
+    "personality": "balanced",
+    "file": "avatar_02.png",
+    "prompt": "portrait of a steampunk inventor, head and shoulders, brass goggles pushed up on forehead, top hat with small gears, leather apron over waistcoat, copper pocket watch chain, muted sepia and brass color palette, solid warm brown background, no text no logos, painterly digital art style",
+    "prompt_hash": "0d228eb023178c55",
+    "sha256": "3fc1f7d19d1643e109c80404e61b7933a821d63f1da2110d79a4eed0f9de89fe"
+  },
+  {
+    "id": "jazz_singer",
+    "name": "Lina Holloway",
+    "personality": "conservative",
+    "file": "avatar_03.png",
+    "prompt": "portrait of a 1920s jazz singer, head and shoulders, feather headband, pearl necklace, satin dress strap visible, soft golden sepia lighting, contemplative expression, solid smoky gold background, no text no logos, painterly digital art style, art deco poster feel",
+    "prompt_hash": "018e8e6c987d3686",
+    "sha256": "118f718aa85fdc450cd4a0b44cc266edef5479ddd3b19d9d71ba4050ae22dab9"
+  },
+  {
+    "id": "hacker",
+    "name": "Zero",
+    "personality": "aggressive",
+    "file": "avatar_04.png",
+    "prompt": "portrait of a cyberpunk hacker, head and shoulders, hooded jacket, LED strip reflecting cyan light on face, terminal-green eyeshadow smudge, undercut hair, subtle data-mesh reflection in pupils, solid near-black background with a single cyan rim light, no text no logos, painterly digital art style",
+    "prompt_hash": "d829f47277732d65",
+    "sha256": "4d1658dec8cd718f0968973b19ad39f50408f6b081c4df1744f1504e2b722012"
+  },
+  {
+    "id": "samurai",
+    "name": "Reza Hayashi",
+    "personality": "balanced",
+    "file": "avatar_05.png",
+    "prompt": "portrait of a female samurai, head and shoulders, white and crimson kimono, hair tied high with a kanzashi pin, calm focused expression, single cherry blossom petal falling, solid soft white background with a faint red accent, no text no logos, painterly digital art style, sumi-e inspired",
+    "prompt_hash": "0aa43f2a269305eb",
+    "sha256": "6ada762ce4f9b965d831b57868bebd324261ee0c049b992e67336e505c84944d"
+  },
+  {
+    "id": "disco_queen",
+    "name": "Vee Stardust",
+    "personality": "aggressive",
+    "file": "avatar_06.png",
+    "prompt": "portrait of a 1970s disco queen, head and shoulders, big halo hair, sequined headband, shimmery eyeshadow, huge sparkling smile, mirror-ball light reflections on skin, solid deep purple background with a few sparkle bokeh dots, no text no logos, painterly digital art style, glamorous",
+    "prompt_hash": "a2fe310f9ffe3587",
+    "sha256": "5978ce70b26d04d5d40f2b05bff5e1371c34e14e099711fc6ed61013bbb356a2"
+  },
+  {
+    "id": "mystic",
+    "name": "Wren of the Hollow",
+    "personality": "conservative",
+    "file": "avatar_07.png",
+    "prompt": "portrait of a forest mystic, head and shoulders, moss-green hooded cloak, white face paint with subtle rune marks, soft glowing candle in foreground out of focus, deep emerald and gold color palette, solid dark forest-green background, no text no logos, painterly digital art style, ethereal",
+    "prompt_hash": "70f7a9af91188052",
+    "sha256": "a82cfea66d3ee95030118f3162e641ae5a860954594898fd533e965a0fc5bf59"
+  },
+  {
+    "id": "pirate",
+    "name": "Captain Saul",
+    "personality": "aggressive",
+    "file": "avatar_08.png",
+    "prompt": "portrait of a weathered pirate captain, head and shoulders, tricorn hat with a tarnished brass buckle, salt-and-pepper beard, leather coat collar turned up, gold hoop earring, scar across one cheek, squinty confident eye, solid muted ocean-blue background, no text no logos, painterly digital art style, oceanic lighting",
+    "prompt_hash": "81d45edf429e34dc",
+    "sha256": "54d8a344fec47eb18121be91e19a856e0b00657b86339158fd488b4943e47284"
+  },
+  {
+    "id": "mad_scientist",
+    "name": "Dr. Indy Vex",
+    "personality": "balanced",
+    "file": "avatar_09.png",
+    "prompt": "portrait of a mad scientist, head and shoulders, white lab coat with a scorch mark, wild Einstein hair, oversized brass goggles, a faint green glow from a vial near collar, mischievous grin, solid dark teal background with a green rim light, no text no logos, painterly digital art style",
+    "prompt_hash": "4ec44888c1893897",
+    "sha256": "27c34157df08db76ba7167483e7f50a49a5a6699926522ddc01fdd32c57752f0"
+  },
+  {
+    "id": "grandmaster",
+    "name": "Aurelia Voss",
+    "personality": "conservative",
+    "file": "avatar_10.png",
+    "prompt": "portrait of a chess grandmaster, head and shoulders, sharp charcoal turtleneck, hair pulled back tight, calculating grey eyes, faint chess-piece shadow on cheek, high-contrast monochrome with one red accent pin on collar, solid mid-grey background, no text no logos, painterly digital art style, minimal",
+    "prompt_hash": "c645d79766357c8e",
+    "sha256": "b7cef23693de7c6d26ae41c6bd75287f90540354ccea66fa2341632869a307c1"
+  }
+]
