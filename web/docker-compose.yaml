@@ -1,0 +1,11 @@
+services:
+  hearts:
+    build: .
+    container_name: hearts
+    restart: unless-stopped
+    networks:
+      - containers_core
+
+networks:
+  containers_core:
+    external: true
